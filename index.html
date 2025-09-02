@@ -21,7 +21,6 @@
         margin-bottom: 12px;
       }
 
-      /* Inputs */
       input,
       button {
         padding: 10px;
@@ -39,7 +38,6 @@
         box-shadow: 0 0 4px rgba(41, 128, 185, 0.3);
       }
 
-      /* Buttons */
       button {
         font-weight: 600;
         border: none;
@@ -73,14 +71,12 @@
         margin-top: 15px;
       }
 
-      /* Labels */
       label {
         font-weight: 700;
         display: block;
         margin-top: 15px;
       }
 
-      /* Participants List */
       #participantsList {
         list-style-type: none;
         padding: 0;
@@ -116,7 +112,6 @@
         font-weight: 700;
       }
 
-      /* Remove Button */
       .remove-participant-btn {
         background: #e74c3c;
         color: white;
@@ -135,7 +130,6 @@
         background-color: #c0392b;
       }
 
-      /* Fixed Winners */
       #fixedWinnersContainer {
         display: flex;
         flex-wrap: wrap;
@@ -160,9 +154,9 @@
 
       .fixed-winner-item.dragging {
         opacity: 0.5;
+        background: #2980b9;
       }
 
-      /* Winner Display */
       #winnerDisplay {
         margin-top: 20px;
         background: #eafaf1;
@@ -265,7 +259,6 @@
       min="1"
     />
 
-    <!-- ✅ Added phone number input -->
     <label for="phoneNumber">WhatsApp Number:</label>
     <input type="tel" id="phoneNumber" placeholder="e.g. 9876543210" />
 
@@ -316,10 +309,7 @@
         modalOkBtn.textContent = "OK";
         modalCancelBtn.style.display = "none";
         modal.style.display = "flex";
-
-        modalOkBtn.onclick = () => {
-          modal.style.display = "none";
-        };
+        modalOkBtn.onclick = () => (modal.style.display = "none");
       }
 
       function showConfirm(message, callback) {
@@ -329,7 +319,6 @@
         modalCancelBtn.style.display = "inline-block";
         modal.style.display = "flex";
         modalCallback = callback;
-
         modalOkBtn.onclick = () => {
           modal.style.display = "none";
           if (modalCallback) modalCallback(true);
@@ -480,6 +469,48 @@
         }
       });
 
+      // --- Mobile Touch Drag Support ---
+      let touchDrag = null;
+      fixedWinnersContainer.addEventListener(
+        "touchstart",
+        (e) => {
+          const target = e.target.closest(".fixed-winner-item");
+          if (!target) return;
+          touchDrag = target;
+          touchDrag.classList.add("dragging");
+        },
+        { passive: true }
+      );
+
+      fixedWinnersContainer.addEventListener(
+        "touchmove",
+        (e) => {
+          if (!touchDrag) return;
+          const touch = e.touches[0];
+          const target = document.elementFromPoint(
+            touch.clientX,
+            touch.clientY
+          );
+          if (
+            target &&
+            target.classList.contains("fixed-winner-item") &&
+            target !== touchDrag
+          ) {
+            const rect = target.getBoundingClientRect();
+            const offset = touch.clientY - rect.top;
+            if (offset > rect.height / 2) target.after(touchDrag);
+            else target.before(touchDrag);
+          }
+          e.preventDefault();
+        },
+        { passive: false }
+      );
+
+      fixedWinnersContainer.addEventListener("touchend", () => {
+        if (touchDrag) touchDrag.classList.remove("dragging");
+        touchDrag = null;
+      });
+
       function updateRunButtonState() {
         const hasParticipants = participants.length > 0;
         const hasContribution =
@@ -501,16 +532,12 @@
         if (winners.size === participants.length)
           return showAlert("All participants already received!");
 
-        // ✅ Require phone number before drawing
         const phoneNumber = phoneNumberInput.value.trim();
-        if (!phoneNumber) {
+        if (!phoneNumber)
           return showAlert("Please enter a WhatsApp number first!");
-        }
 
         const fixedWinners = getFixedWinners();
         const eligible = participants.filter((p) => !winners.has(p));
-
-        // ❌ Removed the blocking loop here
         const remaining = eligible.filter((p) => !fixedWinners.includes(p));
         const shuffled = shuffleArray(remaining);
         const finalWinners = [...fixedWinners, ...shuffled];
@@ -518,19 +545,17 @@
         finalWinners.forEach((w) => winners.add(w));
         const totalPool = participants.length * contribution;
 
-        // Show results
         winnerDisplay.innerHTML = `
-    <strong>Full draw complete!</strong><br/>
-    Winners in order:<br/>
-    ${finalWinners.map((w, i) => `${i + 1}. ${w}`).join("<br/>")}
-    <br/><br/>
-    Total : <strong>$${totalPool.toFixed(2)}</strong><br/>
-    Each Month: <strong>$${contribution.toFixed(2)}</strong>
-  `;
+          <strong>Full draw complete!</strong><br/>
+          Winners in order:<br/>
+          ${finalWinners.map((w, i) => `${i + 1}. ${w}`).join("<br/>")}
+          <br/><br/>
+          Total : <strong>$${totalPool.toFixed(2)}</strong><br/>
+          Each Month: <strong>$${contribution.toFixed(2)}</strong>
+        `;
 
         runFullDrawBtn.disabled = true;
 
-        // ✅ WhatsApp Share Button Logic
         const shareBtn = document.getElementById("shareWhatsappBtn");
         shareBtn.style.display = "block";
 
