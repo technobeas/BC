@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BC</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Arial, sans-serif;
+        max-width: 600px;
+        margin: 20px auto;
+        padding: 20px;
+        background: #f4f6f8;
+        color: #333;
+      }
+
+      h2,
+      h3 {
+        text-align: center;
+        color: #2c3e50;
+        margin-bottom: 12px;
+      }
+
+      /* Inputs */
+      input,
+      button {
+        padding: 10px;
+        margin: 8px 0;
+        width: 100%;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 1rem;
+        box-sizing: border-box;
+      }
+
+      input:focus {
+        border-color: #2980b9;
+        outline: none;
+        box-shadow: 0 0 4px rgba(41, 128, 185, 0.3);
+      }
+
+      /* Buttons */
+      button {
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      button:hover:not(:disabled) {
+        opacity: 0.9;
+        transform: scale(1.02);
+      }
+
+      button:disabled {
+        background-color: #95a5a6;
+        cursor: not-allowed;
+      }
+
+      #addParticipantBtn {
+        background-color: #27ae60;
+        color: white;
+      }
+
+      #runFullDrawBtn {
+        background-color: #2980b9;
+        color: white;
+      }
+
+      #resetBtn {
+        background-color: #e74c3c;
+        color: white;
+        margin-top: 15px;
+      }
+
+      /* Labels */
+      label {
+        font-weight: 700;
+        display: block;
+        margin-top: 15px;
+      }
+
+      /* Participants List */
+      #participantsList {
+        list-style-type: none;
+        padding: 0;
+        margin-top: 10px;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+
+      #participantsList li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #fff;
+        border: 1px solid #eee;
+        border-radius: 6px;
+        padding: 8px 12px;
+        margin-bottom: 6px;
+        transition: background 0.2s;
+      }
+
+      #participantsList li:hover {
+        background: #f1faff;
+      }
+
+      .participant-name {
+        flex-grow: 1;
+        cursor: pointer;
+        font-weight: 500;
+      }
+
+      .participant-name.selected {
+        color: #2980b9;
+        font-weight: 700;
+      }
+
+      /* Remove Button */
+      .remove-participant-btn {
+        background: #e74c3c;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 26px;
+        height: 26px;
+        font-size: 14px;
+        line-height: 24px;
+        text-align: center;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+
+      .remove-participant-btn:hover {
+        background-color: #c0392b;
+      }
+
+      /* Fixed Winners */
+      #fixedWinnersContainer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+        padding: 8px;
+        background: #fff;
+        border: 1px dashed #ccc;
+        border-radius: 6px;
+        min-height: 40px;
+      }
+
+      .fixed-winner-item {
+        padding: 6px 12px;
+        background: #3498db;
+        color: white;
+        border-radius: 16px;
+        cursor: move;
+        font-size: 0.9rem;
+        user-select: none;
+      }
+
+      .fixed-winner-item.dragging {
+        opacity: 0.5;
+      }
+
+      /* Winner Display */
+      #winnerDisplay {
+        margin-top: 20px;
+        background: #eafaf1;
+        border: 1px solid #2ecc71;
+        border-radius: 6px;
+        padding: 15px;
+        font-size: 0.95rem;
+        color: #155724;
+      }
+
+      #winnerDisplay ol {
+        margin: 0;
+        padding-left: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>BC</h2>
+
+    <label for="participantName">Add Participant:</label>
+    <input
+      type="text"
+      id="participantName"
+      placeholder="Enter participant name"
+    />
+    <button id="addParticipantBtn" disabled>Add Participant</button>
+
+    <h3>Participants (<span id="participantCount">0</span>)</h3>
+    <ul id="participantsList"></ul>
+
+    <label for="fixedWinners">Fixed Winner(s) - Drag to reorder:</label>
+    <div id="fixedWinnersContainer"></div>
+
+    <label for="contributionAmount"
+      >Contribution Amount (per participant):</label
+    >
+    <input
+      type="number"
+      id="contributionAmount"
+      placeholder="Enter amount"
+      min="1"
+    />
+
+    <button id="runFullDrawBtn" disabled>Run Full Draw (All at Once)</button>
+    <button id="resetBtn">Reset</button>
+
+    <div id="winnerDisplay"></div>
+    <button
+      id="shareWhatsappBtn"
+      style="
+        display: none;
+        background: #25d366;
+        color: white;
+        margin-top: 10px;
+        border: none;
+        padding: 10px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+      "
+    >
+      📲 Share on WhatsApp
+    </button>
+
+    <script>
+      const participants = [];
+      const winners = new Set();
+
+      const participantNameInput = document.getElementById("participantName");
+      const addParticipantBtn = document.getElementById("addParticipantBtn");
+      const participantsList = document.getElementById("participantsList");
+      const fixedWinnersContainer = document.getElementById(
+        "fixedWinnersContainer"
+      );
+      const contributionAmountInput =
+        document.getElementById("contributionAmount");
+      const runFullDrawBtn = document.getElementById("runFullDrawBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const winnerDisplay = document.getElementById("winnerDisplay");
+      const participantCount = document.getElementById("participantCount");
+
+      participantNameInput.addEventListener("input", () => {
+        const val = participantNameInput.value.trim();
+        addParticipantBtn.disabled = !val || participants.includes(val);
+      });
+
+      addParticipantBtn.addEventListener("click", () => {
+        const name = participantNameInput.value.trim();
+        if (!name || participants.includes(name)) return;
+        participants.push(name);
+        participantNameInput.value = "";
+        addParticipantBtn.disabled = true;
+        updateParticipantsUI();
+        updateRunButtonState();
+      });
+
+      function updateParticipantsUI() {
+        participantsList.innerHTML = "";
+        participants.forEach((p) => {
+          const li = document.createElement("li");
+
+          const nameSpan = document.createElement("span");
+          nameSpan.textContent = p;
+          nameSpan.className = "participant-name";
+          if (getFixedWinners().includes(p)) nameSpan.classList.add("selected");
+
+          nameSpan.addEventListener("click", () => {
+            if (getFixedWinners().includes(p)) removeFixedWinner(p);
+            else addFixedWinner(p);
+            updateParticipantsUI();
+            updateRunButtonState();
+          });
+
+          const removeBtn = document.createElement("button");
+          removeBtn.textContent = "×";
+          removeBtn.className = "remove-participant-btn";
+          removeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (confirm(`Remove "${p}"?`)) {
+              participants.splice(participants.indexOf(p), 1);
+              winners.delete(p);
+              removeFixedWinner(p);
+              updateParticipantsUI();
+              updateRunButtonState();
+            }
+          });
+
+          li.appendChild(nameSpan);
+          li.appendChild(removeBtn);
+          participantsList.appendChild(li);
+        });
+        participantCount.textContent = participants.length;
+        updateFixedWinnersUI();
+      }
+
+      function updateFixedWinnersUI() {
+        const fixedWinners = getFixedWinners();
+        fixedWinnersContainer.innerHTML = "";
+        fixedWinners.forEach((name) =>
+          fixedWinnersContainer.appendChild(createFixedWinnerItem(name))
+        );
+      }
+
+      function createFixedWinnerItem(name) {
+        const div = document.createElement("div");
+        div.textContent = name;
+        div.className = "fixed-winner-item";
+        div.draggable = true;
+        div.addEventListener("dragstart", dragStart);
+        div.addEventListener("dragend", dragEnd);
+        div.addEventListener("click", () => {
+          if (confirm(`Remove "${name}" from fixed winners?`)) {
+            removeFixedWinner(name);
+            updateParticipantsUI();
+            updateRunButtonState();
+          }
+        });
+        return div;
+      }
+
+      function getFixedWinners() {
+        return Array.from(fixedWinnersContainer.children)
+          .map((div) => div.textContent)
+          .filter((name) => participants.includes(name) && !winners.has(name));
+      }
+
+      function addFixedWinner(name) {
+        if (!participants.includes(name) || winners.has(name)) return;
+        if (getFixedWinners().includes(name)) return;
+        fixedWinnersContainer.appendChild(createFixedWinnerItem(name));
+      }
+
+      function removeFixedWinner(name) {
+        Array.from(fixedWinnersContainer.children).forEach((child) => {
+          if (child.textContent === name) child.remove();
+        });
+      }
+
+      let dragged = null;
+      function dragStart(e) {
+        dragged = e.target;
+        e.target.classList.add("dragging");
+      }
+      function dragEnd(e) {
+        if (dragged) dragged.classList.remove("dragging");
+        dragged = null;
+      }
+
+      fixedWinnersContainer.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        const target = e.target;
+        if (
+          target &&
+          target !== dragged &&
+          target.classList.contains("fixed-winner-item")
+        ) {
+          const rect = target.getBoundingClientRect();
+          const offset = e.clientY - rect.top;
+          if (offset > rect.height / 2) target.after(dragged);
+          else target.before(dragged);
+        }
+      });
+
+      function updateRunButtonState() {
+        const hasParticipants = participants.length > 0;
+        const hasContribution =
+          contributionAmountInput.value && contributionAmountInput.value > 0;
+        runFullDrawBtn.disabled =
+          !hasParticipants ||
+          !hasContribution ||
+          winners.size === participants.length;
+      }
+
+      contributionAmountInput.addEventListener("input", updateRunButtonState);
+
+      runFullDrawBtn.addEventListener("click", () => {
+        const contribution = Number(contributionAmountInput.value);
+        if (!contribution || contribution <= 0)
+          return alert("Enter a valid contribution amount!");
+        if (participants.length === 0) return alert("Add participants first!");
+        if (winners.size === participants.length)
+          return alert("All participants already received!");
+
+        const fixedWinners = getFixedWinners();
+        const eligible = participants.filter((p) => !winners.has(p));
+        for (const fw of fixedWinners) if (!eligible.includes(fw)) return;
+
+        const remaining = eligible.filter((p) => !fixedWinners.includes(p));
+        const shuffled = shuffleArray(remaining);
+        const finalWinners = [...fixedWinners, ...shuffled];
+
+        finalWinners.forEach((w) => winners.add(w));
+        const totalPool = participants.length * contribution;
+
+        // Show results
+        winnerDisplay.innerHTML = `
+    <strong>Full draw complete!</strong><br/>
+    Winners in order:<br/>
+    ${finalWinners.map((w, i) => `${i + 1}. ${w}`).join("<br/>")}
+    <br/><br/>
+    Total : <strong>$${totalPool.toFixed(2)}</strong><br/>
+    Each Month: <strong>$${contribution.toFixed(2)}</strong>
+  `;
+
+        runFullDrawBtn.disabled = true;
+
+        // ✅ WhatsApp Share Button Logic (INSIDE handler)
+        const shareBtn = document.getElementById("shareWhatsappBtn");
+        shareBtn.style.display = "block";
+
+        const message =
+          `Full draw complete!\n\nWinners in order:\n` +
+          finalWinners.map((w, i) => `${i + 1}. ${w}`).join("\n") +
+          `\n\nTotal: $${totalPool.toFixed(
+            2
+          )}\nEach Month: $${contribution.toFixed(2)}`;
+
+        const phoneNumber = "918329685504"; // no '+' sign
+        const whatsappUrl =
+          "https://wa.me/" +
+          phoneNumber +
+          "?text=" +
+          encodeURIComponent(message);
+
+        shareBtn.onclick = () => {
+          window.open(whatsappUrl, "_blank");
+        };
+      });
+
+      resetBtn.addEventListener("click", () => {
+        if (confirm("Reset system? All data will be lost.")) {
+          participants.length = 0;
+          winners.clear();
+          participantNameInput.value = "";
+          contributionAmountInput.value = "";
+          winnerDisplay.innerHTML = "";
+          fixedWinnersContainer.innerHTML = "";
+          updateParticipantsUI();
+          updateRunButtonState();
+          addParticipantBtn.disabled = true;
+        }
+      });
+
+      function shuffleArray(arr) {
+        const array = [...arr];
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+      }
+
+      updateParticipantsUI();
+      updateRunButtonState();
+    </script>
+  </body>
+</html>
