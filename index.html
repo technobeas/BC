@@ -532,9 +532,21 @@
         if (winners.size === participants.length)
           return showAlert("All participants already received!");
 
-        const phoneNumber = phoneNumberInput.value.trim();
+        let phoneNumber = phoneNumberInput.value.trim();
         if (!phoneNumber)
           return showAlert("Please enter a WhatsApp number first!");
+
+        // Ensure phone number starts with +91
+        if (!phoneNumber.startsWith("+91")) {
+          phoneNumber = `+91${phoneNumber.replace(/^\+/, "")}`; // Prepend +91, remove any existing +
+        }
+
+        // Optional: Validate phone number format (e.g., 10 digits for India)
+        const phoneRegex = /^\+91\d{10}$/;
+        if (!phoneRegex.test(phoneNumber))
+          return showAlert(
+            "Please enter a valid 10-digit WhatsApp number with +91!"
+          );
 
         const fixedWinners = getFixedWinners();
         const eligible = participants.filter((p) => !winners.has(p));
@@ -546,13 +558,13 @@
         const totalPool = participants.length * contribution;
 
         winnerDisplay.innerHTML = `
-          <strong>Full draw complete!</strong><br/>
-          Winners in order:<br/>
-          ${finalWinners.map((w, i) => `${i + 1}. ${w}`).join("<br/>")}
-          <br/><br/>
-          Total : <strong>$${totalPool.toFixed(2)}</strong><br/>
-          Each Month: <strong>$${contribution.toFixed(2)}</strong>
-        `;
+    <strong>Full draw complete!</strong><br/>
+    Winners in order:<br/>
+    ${finalWinners.map((w, i) => `${i + 1}. ${w}`).join("<br/>")}
+    <br/><br/>
+    Total : <strong>$${totalPool.toFixed(2)}</strong><br/>
+    Each Month: <strong>$${contribution.toFixed(2)}</strong>
+  `;
 
         runFullDrawBtn.disabled = true;
 
